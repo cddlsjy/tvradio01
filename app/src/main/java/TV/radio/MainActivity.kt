@@ -19,6 +19,9 @@ import TV.radio.ui.PlaybackState
 import TV.radio.ui.StationAdapter
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.slider.Slider
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 
 /**
  * 主界面Activity
@@ -28,6 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val REQUEST_CODE_STORAGE = 1001
     }
 
     // UI组件
@@ -64,8 +68,14 @@ class MainActivity : AppCompatActivity() {
         initPlayer()
         initRecyclerView()
         setupListeners()
-        loadStations()
-        restoreLastPlayed()
+        
+        // 检查存储权限
+        if (!hasStoragePermission()) {
+            requestStoragePermission()
+        } else {
+            loadStations()
+            restoreLastPlayed()
+        }
     }
 
     /**
@@ -489,5 +499,50 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         moveTaskToBack(true)
         super.onBackPressed()
+    }
+
+    // ==================== 权限相关 ====================
+
+    /**
+     * 检查是否有存储权限
+     */
+    private fun hasStoragePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    /**
+     * 请求存储权限
+     */
+    private fun requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                REQUEST_CODE_STORAGE
+            )
+        }
+    }
+
+    /**
+     * 权限请求回调
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CODE_STORAGE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予，加载电台列表
+                loadStations()
+                restoreLastPlayed()
+            } else {
+                Toast.makeText(this, "需要存储权限才能读写电台列表", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
