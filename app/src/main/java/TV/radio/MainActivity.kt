@@ -64,7 +64,9 @@ class MainActivity : AppCompatActivity() {
         binding.stationsRecyclerView.layoutManager = LinearLayoutManager(this)
         stationAdapter = StationAdapter(
             onStationClick = { station ->
+                // 选中电台并立即播放
                 selectStation(station)
+                playerManager.playStation(station)
             },
             onDeleteClick = { station ->
                 deleteStation(station)
@@ -92,9 +94,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupPlayerManager() {
+        // 播放状态订阅
         CoroutineScope(Dispatchers.Main).launch {
-            playerManager.playbackState.collectLatest {
-                updatePlaybackState(it)
+            playerManager.playbackState.collectLatest { state ->
+                updatePlaybackState(state)
+            }
+        }
+        // 歌曲元数据订阅
+        CoroutineScope(Dispatchers.Main).launch {
+            playerManager.metadataFlow.collectLatest { metadata ->
+                binding.songTitleTextView.text = metadata
+                binding.songTitleTextView.visibility = if (metadata.isNotBlank()) View.VISIBLE else View.GONE
             }
         }
     }
@@ -123,8 +133,11 @@ class MainActivity : AppCompatActivity() {
             is PlaybackState.Playing -> {
                 binding.playPauseButton.setImageResource(R.drawable.ic_pause)
                 binding.statusTextView.text = "正在播放"
-                binding.songTitleTextView.text = state.stationName
-                binding.songTitleTextView.visibility = View.VISIBLE
+                // 仅在没有元数据时才显示电台名称
+                if (binding.songTitleTextView.text.isBlank()) {
+                    binding.songTitleTextView.text = state.stationName
+                    binding.songTitleTextView.visibility = View.VISIBLE
+                }
             }
             is PlaybackState.Paused -> {
                 binding.playPauseButton.setImageResource(R.drawable.ic_play)
@@ -150,7 +163,7 @@ class MainActivity : AppCompatActivity() {
         val lastStation = stationStorage.getLastPlayed()
         lastStation?.let {
             selectStation(it)
-            playerManager.playStation(it)
+            // playerManager.playStation(it)  // 注释掉，由用户主动点击触发播放
         }
     }
 
