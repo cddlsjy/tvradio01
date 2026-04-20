@@ -1,4 +1,4 @@
-package TV.radio
+package tv.radio
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -13,12 +13,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import TV.radio.data.Station
-import TV.radio.data.StationStorage
-import TV.radio.player.ExoPlayerManager
-import TV.radio.ui.PlaybackState
-import TV.radio.ui.StationAdapter
-import TV.radio.databinding.ActivityMainBinding
+import tv.radio.data.Station
+import tv.radio.data.StationStorage
+import tv.radio.player.ExoPlayerManager
+import tv.radio.ui.PlaybackState
+import tv.radio.ui.StationAdapter
+import tv.radio.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -70,6 +70,12 @@ class MainActivity : AppCompatActivity() {
             },
             onDeleteClick = { station ->
                 deleteStation(station)
+            },
+            onAddClick = {
+                showAddStationDialog()
+            },
+            onSettingsClick = {
+                showSettingsDialog()
             }
         )
         binding.stationsRecyclerView.adapter = stationAdapter
@@ -84,13 +90,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.settingsButton.setOnClickListener {
-            showSettingsDialog()
-        }
-
-        binding.addStationButton.setOnClickListener {
-            showAddStationDialog()
-        }
+        // 隐藏底部的设置和添加按钮
+        binding.settingsButton.visibility = View.GONE
+        binding.addStationButton.visibility = View.GONE
     }
 
     private fun setupPlayerManager() {

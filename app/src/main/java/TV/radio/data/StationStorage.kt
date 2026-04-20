@@ -1,4 +1,4 @@
-package TV.radio.data
+package tv.radio.data
 
 import android.content.Context
 import android.content.SharedPreferences

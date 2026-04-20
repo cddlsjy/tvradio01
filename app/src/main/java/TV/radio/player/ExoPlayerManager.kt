@@ -1,4 +1,4 @@
-package TV.radio.player
+package tv.radio.player
 
 import android.content.Context
 import android.net.Uri
@@ -6,8 +6,8 @@ import android.os.Build
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asFlow
-import TV.radio.data.Station
-import TV.radio.ui.PlaybackState
+import tv.radio.data.Station
+import tv.radio.ui.PlaybackState
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.metadata.Metadata

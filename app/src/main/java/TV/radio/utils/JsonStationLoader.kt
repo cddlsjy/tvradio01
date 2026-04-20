@@ -1,7 +1,7 @@
-package TV.radio.utils
+package tv.radio.utils
 
 import android.content.Context
-import TV.radio.data.Station
+import tv.radio.data.Station
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 

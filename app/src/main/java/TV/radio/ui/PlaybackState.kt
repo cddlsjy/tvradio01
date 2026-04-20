@@ -1,4 +1,4 @@
-package TV.radio.ui
+package tv.radio.ui
 
 /**
  * 播放状态密封类

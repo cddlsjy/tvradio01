@@ -1,4 +1,4 @@
-package TV.radio.data
+package tv.radio.data
 
 /**
  * 电台数据类

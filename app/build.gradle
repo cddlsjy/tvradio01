@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'TV.radio'
+    namespace 'tv.radio'
     compileSdk 34
 
     defaultConfig {
-        applicationId "TV.radio"
+        applicationId "tv.radio"
         minSdk 19
         targetSdk 34
         versionCode 1

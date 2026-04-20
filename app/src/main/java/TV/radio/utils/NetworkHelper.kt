@@ -1,4 +1,4 @@
-package TV.radio.utils
+package tv.radio.utils
 
 import android.content.BroadcastReceiver
 import android.content.Context
