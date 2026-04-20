@@ -315,9 +315,13 @@ class MainActivity : AppCompatActivity() {
      */
     private fun addStation(station: Station) {
         if (station.isValid()) {
-            stationStorage.addStation(station)
+            val saved = stationStorage.addStation(station)
             loadStations()
-            Toast.makeText(this, R.string.station_added, Toast.LENGTH_SHORT).show()
+            if (saved) {
+                Toast.makeText(this, R.string.station_added, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "电台已添加至列表，但因权限限制未保存到文件", Toast.LENGTH_LONG).show()
+            }
         } else {
             Toast.makeText(this, R.string.error_invalid_station, Toast.LENGTH_SHORT).show()
         }
@@ -335,9 +339,13 @@ class MainActivity : AppCompatActivity() {
             selectedStation = null
         }
 
-        stationStorage.removeStation(station)
+        val deleted = stationStorage.removeStation(station)
         loadStations()
-        Toast.makeText(this, R.string.station_deleted, Toast.LENGTH_SHORT).show()
+        if (deleted) {
+            Toast.makeText(this, R.string.station_deleted, Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "电台已删除，但因权限限制未更新文件", Toast.LENGTH_LONG).show()
+        }
     }
 
     /**
