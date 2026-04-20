@@ -1,0 +1,114 @@
+程序启动时能够显示电台了列表，可是出现了两个问题。一 按下任何电台列表都不播放，只有按下右下角播放键才能播放电台。二，原来能够显示歌手歌曲的亚洲经典音乐台不显示了。
+
+根据反馈的问题分析，附件代码中存在两个缺陷：
+
+1. 点击电台列表不自动播放：StationAdapter 的点击回调只调用了 selectStation(station)，该方法仅更新选中状态和保存记录，未调用播放器的 playStation。
+2. 元数据（歌曲信息）不显示：MainActivity 中未订阅 ExoPlayerManager.metadataFlow，导致无法更新 songTitleTextView。
+
+以下为具体修改方案，直接在现有代码上调整即可。
+
+---
+
+一、修复点击电台自动播放
+
+在 MainActivity.kt 中找到 setupUI() 中的 stationAdapter 初始化部分，将点击回调改为：
+
+```kotlin
+stationAdapter = StationAdapter(
+    onStationClick = { station ->
+        // 选中电台并立即播放
+        selectStation(station)
+        playerManager.playStation(station)
+    },
+    onDeleteClick = { station ->
+        deleteStation(station)
+    }
+)
+```
+
+同时移除 restoreLastPlayed() 中自动播放的调用（可选，避免重复播放）：
+
+```kotlin
+private fun restoreLastPlayed() {
+    val lastStation = stationStorage.getLastPlayed()
+    lastStation?.let {
+        selectStation(it)
+        // playerManager.playStation(it)  // 注释掉，由用户主动点击触发播放
+    }
+}
+```
+
+说明：首次启动时若需要自动播放上次电台，可保留该调用，但需注意可能和手动点击行为一致。
+
+---
+
+二、修复元数据显示
+
+在 setupPlayerManager() 方法中添加对 metadataFlow 的订阅：
+
+```kotlin
+private fun setupPlayerManager() {
+    CoroutineScope(Dispatchers.Main).launch {
+        playerManager.playbackState.collectLatest {
+            updatePlaybackState(it)
+        }
+    }
+    // 新增：订阅元数据流
+    CoroutineScope(Dispatchers.Main).launch {
+        playerManager.metadataFlow.collectLatest { metadata ->
+            binding.songTitleTextView.text = metadata
+            binding.songTitleTextView.visibility = if (metadata.isNotBlank()) View.VISIBLE else View.GONE
+        }
+    }
+}
+```
+
+确保 binding.songTitleTextView 与布局中 TextView 的 ID 一致（附件中为 song_title_text_view，使用 View Binding 时可自动映射）。
+
+---
+
+三、完整修改片段（可直接替换对应方法）
+
+替换 setupUI 中 StationAdapter 的创建部分：
+
+```kotlin
+stationAdapter = StationAdapter(
+    onStationClick = { station ->
+        selectStation(station)
+        playerManager.playStation(station)
+    },
+    onDeleteClick = { station ->
+        deleteStation(station)
+    }
+)
+```
+
+替换 setupPlayerManager 方法：
+
+```kotlin
+private fun setupPlayerManager() {
+    // 播放状态订阅
+    CoroutineScope(Dispatchers.Main).launch {
+        playerManager.playbackState.collectLatest { state ->
+            updatePlaybackState(state)
+        }
+    }
+    // 歌曲元数据订阅
+    CoroutineScope(Dispatchers.Main).launch {
+        playerManager.metadataFlow.collectLatest { metadata ->
+            binding.songTitleTextView.text = metadata
+            binding.songTitleTextView.visibility = if (metadata.isNotBlank()) View.VISIBLE else View.GONE
+        }
+    }
+}
+```
+
+---
+
+四、验证点
+
+· 点击任意电台，应开始缓冲并播放，播放按钮变为暂停图标。
+· 播放 AsiaFM 系列电台时，若流中包含 IcyInfo 或 MediaMetadata，songTitleTextView 将显示歌曲信息。
+· 暂停/播放按钮状态同步正常。
+
+按上述修改后，两个问题均可解决。若仍需保留自动播放上次电台，可在 restoreLastPlayed 中保留 playerManager.playStation(it)，但需注意 selectStation 也会调用一次保存，逻辑不冲突。
