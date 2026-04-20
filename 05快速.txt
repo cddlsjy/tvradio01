@@ -1,0 +1,152 @@
+快速版
+
+据您提供的代码和问题描述，我分析出两个问题的根本原因及解决方案如下：
+
+---
+
+问题一：点击电台列表项不播放，只有按下播放键才能播放
+
+原因分析
+
+在 StationAdapter 的 item_station.xml 布局中，根布局 CardView 虽然设置了 android:foreground="?attr/selectableItemBackground"，但没有明确设置 android:clickable="true"。在 Android 中，只有 clickable 为 true 的 View 才会响应点击事件。同时，RecyclerView 的焦点模式可能导致触摸事件被拦截。
+
+解决方案
+
+修改 app/src/main/res/layout/item_station.xml，在 CardView 中添加 android:clickable="true" 和 android:focusable="true"：
+
+```xml
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+    ...
+</androidx.cardview.widget.CardView>
+```
+
+同时，在 MainActivity.initRecyclerView() 中确保 RecyclerView 可以正确接收触摸事件（已有 setFocusable(true) 和 setFocusableInTouchMode(true)，无需额外修改）。
+
+验证方法：添加日志确认 onStationClicked 是否被调用。如果仍未触发，检查是否有其他 View 覆盖在列表项上。
+
+---
+
+问题二：亚洲经典音乐台不显示歌曲标题（元数据丢失）
+
+原因分析
+
+您的项目使用 ExoPlayer 作为播放引擎。ExoPlayer 默认不会自动解析 SHOUTcast/Icecast 流中的 ICY 元数据（歌曲标题信息）。虽然您在 ExoPlayerManager 中实现了 onMetadata 回调，但需要显式为播放器配置 ICY 数据源支持。
+
+解决方案
+
+步骤 1：添加 ExoPlayer ICY 扩展依赖
+
+在 app/build.gradle 的 dependencies 块中添加：
+
+```gradle
+implementation 'com.google.android.exoplayer:exoplayer-icy:2.18.5'
+```
+
+步骤 2：修改 ExoPlayerManager.playStation() 方法
+
+使用 IcyDataSource.Factory 包装原有的 DataSource.Factory，使其能够解析 ICY 元数据。
+
+修改后的 playStation 方法完整代码（注意替换原有的实现）：
+
+```kotlin
+override fun playStation(station: Station) {
+    Log.d(TAG, "Playing station: ${station.name}, URL: ${station.url}")
+    currentStation = station
+    _playbackState.postValue(PlaybackState.Buffering)
+
+    try {
+        exoPlayer?.let { player ->
+            // 创建支持 ICY 的数据源工厂
+            val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                .setUserAgent(Util.getUserAgent(context, "IjkRadioPlayer"))
+                .setAllowCrossProtocolRedirects(true)
+            
+            val icyDataSourceFactory = IcyDataSource.Factory(httpDataSourceFactory)
+            val dataSourceFactory = DefaultDataSource.Factory(context, icyDataSourceFactory)
+
+            val uri = Uri.parse(station.url)
+            val mediaItemBuilder = MediaItem.Builder().setUri(uri)
+            
+            // 仅在 API 21+ 设置追帧速度（SDK 19 兼容）
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                mediaItemBuilder.setLiveConfiguration(
+                    MediaItem.LiveConfiguration.Builder()
+                        .setMaxPlaybackSpeed(1.02f)
+                        .build()
+                )
+            }
+            val mediaItem = mediaItemBuilder.build()
+
+            val mediaSource = when {
+                uri.lastPathSegment?.endsWith(".m3u8", ignoreCase = true) == true ||
+                Util.inferContentType(uri) == C.CONTENT_TYPE_HLS -> {
+                    HlsMediaSource.Factory(dataSourceFactory)
+                        .createMediaSource(mediaItem)
+                }
+                else -> {
+                    ProgressiveMediaSource.Factory(dataSourceFactory)
+                        .createMediaSource(mediaItem)
+                }
+            }
+
+            player.setMediaSource(mediaSource)
+            player.prepare()
+            player.play()
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "Error playing station", e)
+        _playbackState.postValue(PlaybackState.Error("播放失败: ${e.message}"))
+    }
+}
+```
+
+注意：需要导入相关类：
+
+```kotlin
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.source.hls.HlsMediaSource
+import com.google.android.exoplayer2.upstream.DefaultDataSource
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
+import com.google.android.exoplayer2.ext.icy.IcyDataSource
+```
+
+步骤 3：确认 onMetadata 回调已正确发送歌曲信息
+
+您的 ExoPlayerManager 中已经实现了 onMetadata 和 smartFixMetadata，无需修改。添加 ICY 支持后，IcyInfo 条目会被正常解析，歌曲标题会通过 _metadataFlow 发送到 UI。
+
+---
+
+额外建议：确保 SDK 19 兼容性
+
+您在之前的回答中已经正确处理了：
+
+· 将 ExoPlayer 版本降为 2.18.5
+· 移除 setAllowChunklessPreparation
+· 条件化 setMaxPlaybackSpeed（仅在 API 21+ 执行）
+
+以上修改均与 Android 4.4 (API 19) 兼容。
+
+---
+
+验证步骤
+
+1. 应用修改后重新编译运行。
+2. 点击任意电台列表项，应直接开始播放（无需按播放键）。
+3. 播放亚洲经典音乐台（http://goldfm.cn:8000/goldfm），等待几秒，界面下方应显示歌曲标题（例如“歌手 - 歌曲名”）。
+
+如果仍然不显示歌曲标题，请检查日志中是否有 onMetadata 的打印输出（Log.d(TAG, "IcyInfo raw title: $rawTitle")），确认服务器是否发送了 ICY 元数据。
+
+---
+
+通过以上两步修改，您的问题应该能得到完全解决。如果还有其他异常，欢迎继续反馈。
