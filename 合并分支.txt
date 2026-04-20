@@ -1,0 +1,49 @@
+如果仓库里同时存在 `main` 和 `master`，通常是因为 GitHub 等平台将默认分支从 `master` 改成了 `main`，导致历史遗留了两个分支。合并它们完全可行，推荐只保留 `main`，具体步骤如下：
+
+### 1. 确定当前默认分支
+先去远程仓库（GitHub/GitLab）查看默认分支是哪个，建议保留那个分支（一般是 `main`）。后续以保留 `main` 为例。
+
+### 2. 把 `master` 的最新更改合并到 `main`
+```bash
+# 切换到 main 分支并更新
+git checkout main
+git pull origin main
+
+# 合并 master 分支
+git merge master
+```
+如果遇到冲突，解决后 `git add .` 并 `git commit`。
+
+### 3. 推送合并后的 `main`
+```bash
+git push origin main
+```
+
+### 4. 删除本地和远程的 `master` 分支
+```bash
+# 删除本地 master
+git branch -d master   # 已合并时用 -d，若未完全合并可改用 -D 强制删除
+
+# 删除远程 master
+git push origin --delete master
+```
+
+### 5. 清理本地跟踪的远程引用（可选）
+```bash
+git remote prune origin
+```
+
+### 6. 通知团队成员
+如果其他人克隆过仓库，让他们执行以下命令更新本地环境：
+```bash
+git checkout main
+git pull
+git remote prune origin   # 清理远程已删除的分支引用
+```
+
+### 注意事项
+- 确保所有 CI/CD 配置、部署脚本等不再依赖 `master` 分支名。
+- 如果某些 PR 或 Issue 还指向 `master`，需要更新为目标分支。
+- 如果仓库有 git hook 或本地别名使用了 `master`，记得一并修改。
+
+完成上述操作后，你就只需要维护 `main` 一个主分支了。
