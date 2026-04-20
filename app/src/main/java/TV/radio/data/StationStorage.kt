@@ -20,28 +20,96 @@ class StationStorage(private val context: Context) {
     }
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    
+    // 内存缓存（本次运行期间的自定义列表）
+    private var cachedStations: MutableList<Station>? = null
 
     private fun getM3UFile(): File {
         val dir = File(Environment.getExternalStorageDirectory(), M3U_DIR)
         return File(dir, M3U_FILE)
     }
 
-    // ========== 电台列表读取（优雅降级） ==========
+    // ========== 电台列表读取（不依赖权限） ==========
     fun getStations(): List<Station> {
+        // 优先返回缓存（如果有）
+        cachedStations?.let { return it.toList() }
+
+        val defaultStations = getDefaultStations()
         val m3uFile = getM3UFile()
-        return try {
+        val stations = try {
             if (m3uFile.exists() && m3uFile.canRead()) {
                 val parsed = parseM3U(m3uFile)
-                if (parsed.isNotEmpty()) parsed else getDefaultStations()
+                if (parsed.isNotEmpty()) parsed else defaultStations
             } else {
-                getDefaultStations()
+                defaultStations
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            getDefaultStations()
+            defaultStations
         }
+        cachedStations = stations.toMutableList()
+        return stations
     }
 
+    // ========== 增删改（需要权限，返回是否成功写入文件） ==========
+    fun addStation(station: Station): Boolean {
+        val stations = getStations().toMutableList()
+        if (stations.none { it.name == station.name && it.url == station.url }) {
+            stations.add(station)
+            cachedStations = stations
+            return saveStationsToM3U(stations, getM3UFile())
+        }
+        return false
+    }
+
+    fun removeStation(station: Station): Boolean {
+        val stations = getStations().toMutableList()
+        val iterator = stations.iterator()
+        var removed = false
+        while (iterator.hasNext()) {
+            if (iterator.next().id == station.id) {
+                iterator.remove()
+                removed = true
+                break
+            }
+        }
+        if (removed) {
+            cachedStations = stations
+            return saveStationsToM3U(stations, getM3UFile())
+        }
+        return false
+    }
+
+    fun removeStationById(stationId: String): Boolean {
+        val stations = getStations().toMutableList()
+        val iterator = stations.iterator()
+        var removed = false
+        while (iterator.hasNext()) {
+            if (iterator.next().id == stationId) {
+                iterator.remove()
+                removed = true
+                break
+            }
+        }
+        if (removed) {
+            cachedStations = stations
+            return saveStationsToM3U(stations, getM3UFile())
+        }
+        return false
+    }
+
+    fun updateStation(station: Station): Boolean {
+        val stations = getStations().toMutableList()
+        val index = stations.indexOfFirst { it.id == station.id }
+        if (index != -1) {
+            stations[index] = station
+            cachedStations = stations
+            return saveStationsToM3U(stations, getM3UFile())
+        }
+        return false
+    }
+
+    // 写入 M3U 文件（可能因权限不足失败）
     private fun saveStationsToM3U(stations: List<Station>, m3uFile: File): Boolean {
         return try {
             val dir = m3uFile.parentFile
@@ -108,62 +176,6 @@ class StationStorage(private val context: Context) {
         return stations
     }
 
-    // ========== 增删改（返回是否成功写入文件） ==========
-    fun addStation(station: Station): Boolean {
-        val stations = getStations().toMutableList()
-        if (stations.none { it.name == station.name && it.url == station.url }) {
-            stations.add(station)
-            return saveStationsToM3U(stations, getM3UFile())
-        }
-        return false
-    }
-
-    fun removeStation(station: Station): Boolean {
-        val stations = getStations().toMutableList()
-        val iterator = stations.iterator()
-        var removed = false
-        while (iterator.hasNext()) {
-            if (iterator.next().id == station.id) {
-                iterator.remove()
-                removed = true
-                break
-            }
-        }
-        return if (removed) {
-            saveStationsToM3U(stations, getM3UFile())
-        } else {
-            false
-        }
-    }
-
-    fun removeStationById(stationId: String): Boolean {
-        val stations = getStations().toMutableList()
-        val iterator = stations.iterator()
-        var removed = false
-        while (iterator.hasNext()) {
-            if (iterator.next().id == stationId) {
-                iterator.remove()
-                removed = true
-                break
-            }
-        }
-        return if (removed) {
-            saveStationsToM3U(stations, getM3UFile())
-        } else {
-            false
-        }
-    }
-
-    fun updateStation(station: Station): Boolean {
-        val stations = getStations().toMutableList()
-        val index = stations.indexOfFirst { it.id == station.id }
-        if (index != -1) {
-            stations[index] = station
-            return saveStationsToM3U(stations, getM3UFile())
-        }
-        return false
-    }
-
     // ========== 默认电台列表 ==========
     private fun getDefaultStations(): List<Station> {
         return listOf(
@@ -204,6 +216,7 @@ class StationStorage(private val context: Context) {
     fun getUseHardwareDecode(): Boolean = prefs.getBoolean(KEY_USE_HARDWARE_DECODE, true)
     fun clearAll() {
         prefs.edit().clear().apply()
+        cachedStations = null
         try { getM3UFile().delete() } catch (_: Exception) {}
     }
 
