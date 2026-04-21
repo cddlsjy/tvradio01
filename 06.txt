@@ -1,0 +1,148 @@
+根据您反馈的问题，附件代码中确实缺少对“遥控器自动播放”和“启动时自动播放上次电台”这两个设置选项的实际应用逻辑。以下是完整的修复方案，直接替换或新增相应代码段即可。
+
+一、MainActivity.kt 修改
+1. 添加成员变量存储开关状态
+在类成员变量区域添加：
+
+kotlin
+private var remoteControlAutoPlay = true      // 遥控器自动播放
+private var autoPlayLastStation = true        // 启动时自动播放上次电台
+2. 在 onCreate 中加载保存的设置
+在 onCreate 方法末尾（例如 restoreLastPlayed() 调用之前）添加：
+
+kotlin
+remoteControlAutoPlay = stationStorage.getRemoteControlPlay()
+autoPlayLastStation = stationStorage.getAutoPlayLastStation()
+3. 修改 restoreLastPlayed() 方法，根据设置决定是否自动播放
+kotlin
+private fun restoreLastPlayed() {
+    val lastStation = stationStorage.getLastPlayed()
+    lastStation?.let {
+        selectStation(it)
+        if (autoPlayLastStation) {
+            playerManager.playStation(it)
+        }
+    }
+}
+4. 修改 moveSelection() 方法，使用遥控器自动播放标志
+找到 moveSelection(delta: Int) 方法，修改最后几行：
+
+kotlin
+private fun moveSelection(delta: Int) {
+    val count = stationAdapter.itemCount
+    if (count == 0) return
+
+    val currentPos = if (selectedStation == null) {
+        if (delta > 0) -1 else count
+    } else {
+        stations.indexOfFirst { it.id == selectedStation?.id }.coerceAtLeast(0)
+    }
+
+    val newPos = ((currentPos + delta) % count + count) % count
+    val station = stationAdapter.getItemAt(newPos)
+    stationAdapter.setSelectedStation(station)
+    recyclerView.smoothScrollToPosition(newPos)
+    
+    // 使用遥控器自动播放标志
+    if (remoteControlAutoPlay && station != null) {
+        playStationAndUpdateUI(station)
+    }
+}
+5. 修改 showSettingsDialog() 中的保存逻辑，同步更新成员变量
+找到 setPositiveButton 代码块，在保存设置后同步更新成员变量：
+
+kotlin
+.setPositiveButton("保存") { _, _ ->
+    val volume = volumeSlider.value.toFloat()
+    val useHardwareDecode = radioHardware.isChecked
+
+    stationStorage.saveVolume(volume)
+    stationStorage.saveUseHardwareDecode(useHardwareDecode)
+    stationStorage.saveRemoteControlPlay(autoPlaySwitch.isChecked)
+    stationStorage.saveAutoPlayLastStation(autoPlayLastStationSwitch.isChecked)
+    playerManager.setVolume(volume)
+
+    // 同步更新成员变量
+    remoteControlAutoPlay = autoPlaySwitch.isChecked
+    autoPlayLastStation = autoPlayLastStationSwitch.isChecked
+
+    Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
+}
+二、完整修改后的关键方法代码（可直接替换）
+kotlin
+// 1. 在类中添加成员变量
+private var remoteControlAutoPlay = true
+private var autoPlayLastStation = true
+
+// 2. onCreate 中加载设置（放在 loadStations() 和 restoreLastPlayed() 之前）
+override fun onCreate(savedInstanceState: Bundle?) {
+    // ... 原有代码 ...
+    
+    remoteControlAutoPlay = stationStorage.getRemoteControlPlay()
+    autoPlayLastStation = stationStorage.getAutoPlayLastStation()
+    
+    loadStations()
+    restoreLastPlayed()
+}
+
+// 3. restoreLastPlayed()
+private fun restoreLastPlayed() {
+    val lastStation = stationStorage.getLastPlayed()
+    lastStation?.let {
+        selectStation(it)
+        if (autoPlayLastStation) {
+            playerManager.playStation(it)
+        }
+    }
+}
+
+// 4. moveSelection()
+private fun moveSelection(delta: Int) {
+    val count = stationAdapter.itemCount
+    if (count == 0) return
+
+    val currentPos = if (selectedStation == null) {
+        if (delta > 0) -1 else count
+    } else {
+        stations.indexOfFirst { it.id == selectedStation?.id }.coerceAtLeast(0)
+    }
+
+    val newPos = ((currentPos + delta) % count + count) % count
+    val station = stationAdapter.getItemAt(newPos)
+    stationAdapter.setSelectedStation(station)
+    recyclerView.smoothScrollToPosition(newPos)
+    
+    if (remoteControlAutoPlay && station != null) {
+        playStationAndUpdateUI(station)
+    }
+}
+
+// 5. showSettingsDialog 中的保存按钮
+.setPositiveButton("保存") { _, _ ->
+    val volume = volumeSlider.value.toFloat()
+    val useHardwareDecode = radioHardware.isChecked
+
+    stationStorage.saveVolume(volume)
+    stationStorage.saveUseHardwareDecode(useHardwareDecode)
+    stationStorage.saveRemoteControlPlay(autoPlaySwitch.isChecked)
+    stationStorage.saveAutoPlayLastStation(autoPlayLastStationSwitch.isChecked)
+    playerManager.setVolume(volume)
+
+    remoteControlAutoPlay = autoPlaySwitch.isChecked
+    autoPlayLastStation = autoPlayLastStationSwitch.isChecked
+
+    Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
+}
+三、验证要点
+启动自动播放：关闭开关后，重新打开 App，上次播放的电台应仅选中但不播放；打开开关则自动播放。
+
+遥控器自动播放：使用方向键上下移动选中电台，打开开关时自动播放新电台；关闭时仅切换选中状态，不播放。
+
+设置持久化：重启应用后设置仍然保持。
+
+四、注意事项
+附件中的 StationStorage 已包含 getRemoteControlPlay() 和 getAutoPlayLastStation() 方法，无需额外添加。
+
+若您的 MainActivity 中未使用 View Binding（即未使用 binding 对象），请根据实际 findViewById 方式调整代码（例如 findViewById<SwitchCompat>(R.id.auto_play_switch)）。
+
+按上述修改后，两个无效的设置选项即可正常工作。

@@ -14,6 +14,8 @@ class StationStorage(private val context: Context) {
         private const val KEY_LAST_POSITION = "last_position"
         private const val KEY_USE_EXO_PLAYER = "use_exo_player"
         private const val KEY_USE_HARDWARE_DECODE = "use_hardware_decode"
+        private const val KEY_REMOTE_CONTROL_PLAY = "remote_control_play"
+        private const val KEY_AUTO_PLAY_LAST_STATION = "auto_play_last_station"
 
         private const val M3U_DIR = "tvradio"
         private const val M3U_FILE = "radio.m3u"
@@ -214,6 +216,10 @@ class StationStorage(private val context: Context) {
     }
     fun saveUseHardwareDecode(useHardware: Boolean) { prefs.edit().putBoolean(KEY_USE_HARDWARE_DECODE, useHardware).apply() }
     fun getUseHardwareDecode(): Boolean = prefs.getBoolean(KEY_USE_HARDWARE_DECODE, true)
+    fun saveRemoteControlPlay(enabled: Boolean) { prefs.edit().putBoolean(KEY_REMOTE_CONTROL_PLAY, enabled).apply() }
+    fun getRemoteControlPlay(): Boolean = prefs.getBoolean(KEY_REMOTE_CONTROL_PLAY, true)
+    fun saveAutoPlayLastStation(enabled: Boolean) { prefs.edit().putBoolean(KEY_AUTO_PLAY_LAST_STATION, enabled).apply() }
+    fun getAutoPlayLastStation(): Boolean = prefs.getBoolean(KEY_AUTO_PLAY_LAST_STATION, true)
     fun clearAll() {
         prefs.edit().clear().apply()
         cachedStations = null

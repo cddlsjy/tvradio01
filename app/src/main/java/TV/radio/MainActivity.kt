@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -34,6 +35,10 @@ class MainActivity : AppCompatActivity() {
     private var selectedStation: Station? = null
     private var stations: List<Station> = emptyList()
 
+    // 开关状态
+    private var remoteControlAutoPlay = true      // 遥控器自动播放
+    private var autoPlayLastStation = true        // 启动时自动播放上次电台
+
     // 暂存待操作的电台
     private var pendingAddStation: Station? = null
     private var pendingDeleteStation: Station? = null
@@ -56,6 +61,10 @@ class MainActivity : AppCompatActivity() {
 
         setupUI()
         setupPlayerManager()
+
+        // 加载设置
+        remoteControlAutoPlay = stationStorage.getRemoteControlPlay()
+        autoPlayLastStation = stationStorage.getAutoPlayLastStation()
 
         // 直接加载电台列表，不检查权限
         loadStations()
@@ -133,6 +142,14 @@ class MainActivity : AppCompatActivity() {
         binding.songTitleTextView.text = station.name
     }
 
+    /**
+     * 播放电台并更新UI
+     */
+    private fun playStationAndUpdateUI(station: Station) {
+        selectStation(station)
+        playerManager.playStation(station)
+    }
+
     private fun updatePlaybackState(state: PlaybackState) {
         when (state) {
             is PlaybackState.Playing -> {
@@ -168,7 +185,9 @@ class MainActivity : AppCompatActivity() {
         val lastStation = stationStorage.getLastPlayed()
         lastStation?.let {
             selectStation(it)
-            // playerManager.playStation(it)  // 注释掉，由用户主动点击触发播放
+            if (autoPlayLastStation) {
+                playerManager.playStation(it)
+            }
         }
     }
 
@@ -317,10 +336,14 @@ class MainActivity : AppCompatActivity() {
         val decodeModeGroup = view.findViewById<android.widget.RadioGroup>(R.id.decode_mode_group)
         val radioHardware = view.findViewById<android.widget.RadioButton>(R.id.radio_hardware)
         val radioSoftware = view.findViewById<android.widget.RadioButton>(R.id.radio_software)
+        val autoPlaySwitch = view.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.auto_play_switch)
+        val autoPlayLastStationSwitch = view.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.auto_play_last_station_switch)
 
         volumeSlider.value = stationStorage.getVolume().toFloat()
         radioHardware.isChecked = stationStorage.getUseHardwareDecode()
         radioSoftware.isChecked = !stationStorage.getUseHardwareDecode()
+        autoPlaySwitch.isChecked = stationStorage.getRemoteControlPlay()
+        autoPlayLastStationSwitch.isChecked = stationStorage.getAutoPlayLastStation()
 
         dialog.setTitle("设置")
         dialog.setPositiveButton("保存") { _, _ ->
@@ -329,7 +352,13 @@ class MainActivity : AppCompatActivity() {
 
             stationStorage.saveVolume(volume)
             stationStorage.saveUseHardwareDecode(useHardwareDecode)
+            stationStorage.saveRemoteControlPlay(autoPlaySwitch.isChecked)
+            stationStorage.saveAutoPlayLastStation(autoPlayLastStationSwitch.isChecked)
             playerManager.setVolume(volume)
+
+            // 同步更新成员变量
+            remoteControlAutoPlay = autoPlaySwitch.isChecked
+            autoPlayLastStation = autoPlayLastStationSwitch.isChecked
 
             Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
         }
@@ -405,5 +434,29 @@ class MainActivity : AppCompatActivity() {
             playerManager.stop()
         }
         super.onBackPressed()
+    }
+
+    /**
+     * 移动选择
+     */
+    private fun moveSelection(delta: Int) {
+        val count = stationAdapter.itemCount
+        if (count == 0) return
+
+        val currentPos = if (selectedStation == null) {
+            if (delta > 0) -1 else count
+        } else {
+            stations.indexOfFirst { it.id == selectedStation?.id }.coerceAtLeast(0)
+        }
+
+        val newPos = ((currentPos + delta) % count + count) % count
+        val station = stationAdapter.getItemAt(newPos)
+        stationAdapter.setSelectedStation(station)
+        binding.stationsRecyclerView.smoothScrollToPosition(newPos)
+        
+        // 使用遥控器自动播放标志
+        if (remoteControlAutoPlay && station != null) {
+            playStationAndUpdateUI(station)
+        }
     }
 }
