@@ -62,6 +62,9 @@ class MainActivity : AppCompatActivity() {
         setupUI()
         setupPlayerManager()
 
+        // 让RecyclerView请求焦点，确保按键事件能正确传递
+        binding.stationsRecyclerView.requestFocus()
+
         // 加载设置
         remoteControlAutoPlay = stationStorage.getRemoteControlPlay()
         autoPlayLastStation = stationStorage.getAutoPlayLastStation()
@@ -457,6 +460,23 @@ class MainActivity : AppCompatActivity() {
         // 使用遥控器自动播放标志
         if (remoteControlAutoPlay && station != null) {
             playStationAndUpdateUI(station)
+        }
+    }
+
+    /**
+     * 处理遥控器按键事件
+     */
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        return when (keyCode) {
+            android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                moveSelection(-1)   // 向上移动
+                true
+            }
+            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                moveSelection(1)    // 向下移动
+                true
+            }
+            else -> super.onKeyDown(keyCode, event)
         }
     }
 }
