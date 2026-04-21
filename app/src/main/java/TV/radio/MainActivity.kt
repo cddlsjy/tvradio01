@@ -443,25 +443,28 @@ class MainActivity : AppCompatActivity() {
      * 移动选择
      */
     private fun moveSelection(delta: Int) {
-        val count = stationAdapter.itemCount
-        if (count == 0) return
+        val stationCount = stations.size
+        if (stationCount == 0) return
 
+        // 获取当前选中电台的位置，若未选中则根据方向决定起始位置
         val currentPos = if (selectedStation == null) {
-            if (delta > 0) -1 else count
+            if (delta > 0) -1 else stationCount
         } else {
             stations.indexOfFirst { it.id == selectedStation?.id }.coerceAtLeast(0)
         }
 
-        val newPos = ((currentPos + delta) % count + count) % count
-        val station = stationAdapter.getItemAt(newPos)
+        var newPos = currentPos + delta
+        // 循环处理：超出顶部则跳到底部，超出底部则跳到顶部
+        if (newPos < 0) newPos = stationCount - 1
+        else if (newPos >= stationCount) newPos = 0
 
-        // 关键修复：必须确保 station 不为空
-        if (station != null) {
-            stationAdapter.setSelectedStation(station)
-            binding.stationsRecyclerView.smoothScrollToPosition(newPos)
-            if (remoteControlAutoPlay) {
-                playStationAndUpdateUI(station)
-            }
+        val station = stations[newPos]
+        // 更新选中状态并滚动到对应位置
+        stationAdapter.setSelectedStation(station)
+        binding.stationsRecyclerView.smoothScrollToPosition(newPos)
+        // 根据用户设置决定是否自动播放
+        if (remoteControlAutoPlay) {
+            playStationAndUpdateUI(station)
         }
     }
 
