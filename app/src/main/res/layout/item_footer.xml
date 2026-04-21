@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginEnd="8dp"
-        android:text="+ 添加新电台"
+        android:text="添加电台"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
     <Button

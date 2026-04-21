@@ -454,12 +454,14 @@ class MainActivity : AppCompatActivity() {
 
         val newPos = ((currentPos + delta) % count + count) % count
         val station = stationAdapter.getItemAt(newPos)
-        stationAdapter.setSelectedStation(station)
-        binding.stationsRecyclerView.smoothScrollToPosition(newPos)
-        
-        // 使用遥控器自动播放标志
-        if (remoteControlAutoPlay && station != null) {
-            playStationAndUpdateUI(station)
+
+        // 关键修复：必须确保 station 不为空
+        if (station != null) {
+            stationAdapter.setSelectedStation(station)
+            binding.stationsRecyclerView.smoothScrollToPosition(newPos)
+            if (remoteControlAutoPlay) {
+                playStationAndUpdateUI(station)
+            }
         }
     }
 
