@@ -47,6 +47,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 隐藏ActionBar
+        supportActionBar?.hide()
+
         stationStorage = StationStorage(this)
         playerManager = ExoPlayerManager.getInstance(this)
         playerManager.initialize()
