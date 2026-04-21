@@ -44,6 +44,7 @@
 │   │   ├── 04
 │   │   │   └── a35cd6795d2cde60e13a5fae7978bd9b798d9f
 │   │   ├── 05
+│   │   │   ├── 50e81b089dd8bf4dcd705677b36bbd92bb43d9
 │   │   │   └── 713ef0cc1c83bd647cbc9eaba84ff2aae521c9
 │   │   ├── 06
 │   │   │   ├── 37a088a01e8ddab3bf3fa98dbe804cbde1a0dc
@@ -53,10 +54,13 @@
 │   │   ├── 09
 │   │   │   └── 551a74d8a222060c415417f39ef7fa6a8746ef
 │   │   ├── 0a
+│   │   │   ├── 5b0e1a603171ff483d185f8d35bf641ede1295
 │   │   │   └── 8d65935b4d1997643b4b4c71099cc305f64afa
 │   │   ├── 0b
 │   │   │   ├── 58ac4e8ef365d5cdd94ad8769af98d3d72c562
 │   │   │   └── 6ef813b86f8a3a996a72dec57f717bf8d9de22
+│   │   ├── 0c
+│   │   │   └── ada42bd491f594cdc761c238386f76ca6fe765
 │   │   ├── 0d
 │   │   │   ├── 7a327c7e22316e556c00aaa5ed9e9105c3ea9b
 │   │   │   └── aa956c0c6a2149854004d78624f4edb83e5a61
@@ -134,6 +138,7 @@
 │   │   │   ├── 2b37a97faeb9350072ae5ea5f59ea477139a06
 │   │   │   └── 9492c883b4d93d48edca4d76b7e204d15f04f9
 │   │   ├── 3b
+│   │   │   ├── 5c16efc437d6f9d274f4fa8bf54e31bceac46e
 │   │   │   └── d5c6aee43ca076979ece8918f8798fc87b2030
 │   │   ├── 3c
 │   │   │   └── f2d2fbdd46823467cbc24106fb2bdc988dd90b
@@ -156,6 +161,8 @@
 │   │   │   └── 67b971fe85339ab6749c89de5ffb6d323a0a47
 │   │   ├── 47
 │   │   │   └── 321f82b51bd103a637564b6d3b9848c2adcd3e
+│   │   ├── 48
+│   │   │   └── 7cb53cb64a554ff258feec2d01cae2b48922a7
 │   │   ├── 49
 │   │   │   └── da5fc529dad9a51661f8d36a420b36703bba78
 │   │   ├── 4b
@@ -184,6 +191,7 @@
 │   │   ├── 58
 │   │   │   ├── 0ea5126fdc6f7bd18efed2f2dc4e151df17d4f
 │   │   │   ├── a6af79070da9d43a996a54eba4e7d4118de5e4
+│   │   │   ├── d1137af53cf49c97c6e752dab679e06fc7e375
 │   │   │   └── eb91a41abb88eb6d58c285b5f7b6a1ba5e1a55
 │   │   ├── 5b
 │   │   │   └── deff477b8974f48d64f3df490d681cc88fc284
@@ -298,11 +306,15 @@
 │   │   │   └── f45d27b6b28f67d6f8080e1496006d5ca67d66
 │   │   ├── 9f
 │   │   │   └── 48a343b227964cac8d6d01ad57114dbdaa25db
+│   │   ├── a3
+│   │   │   └── 6f4a5c5eab3cd86e4dc0203a16de55b72b4da2
 │   │   ├── a4
+│   │   │   ├── 4f2a00a1d03636c9ff7992a34427a171f05a2d
 │   │   │   ├── 76ab5b1ddf644a893102ca48a2a2796b1c8794
 │   │   │   └── a327aded9fca39a5467b9effd6b46864179eac
 │   │   ├── a5
-│   │   │   └── 7171e87dac8ee7b03e7289c55bca941e74b7cd
+│   │   │   ├── 7171e87dac8ee7b03e7289c55bca941e74b7cd
+│   │   │   └── 8c73f1fe3674a79fef0b1cc91540d0ba041999
 │   │   ├── a6
 │   │   │   └── d8ada1c367a3bba294bbc5a7bbd300b3ce58d1
 │   │   ├── a8
@@ -336,6 +348,8 @@
 │   │   │   └── 5e684bf343fd273a548dc8c59c49ae5a87ea06
 │   │   ├── bd
 │   │   │   └── 7a8443ac1b0eb1a38d121c5e1848726fcc31fb
+│   │   ├── be
+│   │   │   └── 99d6c5e2094addb4ffe341c7e434f7af1cf6b3
 │   │   ├── bf
 │   │   │   ├── 3ceeed808eabc22d4979bcdac31b4315429b54
 │   │   │   └── a4f3bc8b1dc6a6dd60307f7c3b3ce099cb642a
@@ -488,6 +502,7 @@
 ├── 05快速.txt
 ├── 06.txt
 ├── README.md
+├── TVradio-AI.txt
 ├── app
 │   ├── build
 │   │   ├── 20260421_9735457419069758823.compiler.options
@@ -2462,25 +2477,28 @@ class MainActivity : AppCompatActivity() {
      * 移动选择
      */
     private fun moveSelection(delta: Int) {
-        val count = stationAdapter.itemCount
-        if (count == 0) return
+        val stationCount = stations.size
+        if (stationCount == 0) return
 
+        // 获取当前选中电台的位置，若未选中则根据方向决定起始位置
         val currentPos = if (selectedStation == null) {
-            if (delta > 0) -1 else count
+            if (delta > 0) -1 else stationCount
         } else {
             stations.indexOfFirst { it.id == selectedStation?.id }.coerceAtLeast(0)
         }
 
-        val newPos = ((currentPos + delta) % count + count) % count
-        val station = stationAdapter.getItemAt(newPos)
+        var newPos = currentPos + delta
+        // 循环处理：超出顶部则跳到底部，超出底部则跳到顶部
+        if (newPos < 0) newPos = stationCount - 1
+        else if (newPos >= stationCount) newPos = 0
 
-        // 关键修复：必须确保 station 不为空
-        if (station != null) {
-            stationAdapter.setSelectedStation(station)
-            binding.stationsRecyclerView.smoothScrollToPosition(newPos)
-            if (remoteControlAutoPlay) {
-                playStationAndUpdateUI(station)
-            }
+        val station = stations[newPos]
+        // 更新选中状态并滚动到对应位置
+        stationAdapter.setSelectedStation(station)
+        binding.stationsRecyclerView.smoothScrollToPosition(newPos)
+        // 根据用户设置决定是否自动播放
+        if (remoteControlAutoPlay) {
+            playStationAndUpdateUI(station)
         }
     }
 

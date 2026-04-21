@@ -224,15 +224,28 @@ class ExoPlayerManager private constructor(private val context: Context) {
 
     /**
      * 智能修复元数据编码
-     * 依次尝试 UTF-8、GBK、GB18030，选择包含中文字符最多的结果
+     * 优先尝试 UTF-8，仅在 UTF-8 明显失败时才回退到 GBK/GB18030
      */
     private fun smartFixMetadata(badString: String): String {
         if (badString.isBlank()) return badString
 
-        // 将错误字符串还原为原始字节（因为 ExoPlayer 错误地按 ISO-8859-1 读取）
+        // 还原为原始字节（ExoPlayer 错误地按 ISO-8859-1 读取）
         val bytes = badString.toByteArray(Charsets.ISO_8859_1)
 
-        // 候选编码列表（按优先级排序）
+        // 1. 优先尝试 UTF-8，并检查解码质量
+        try {
+            val utf8Decoded = String(bytes, Charsets.UTF_8)
+            // 如果解码结果中不包含替换字符 '�'，并且至少有一个中文字符 → 认为是有效的 UTF-8
+            if (!utf8Decoded.contains('�') && utf8Decoded.any { it in '\u4e00'..'\u9fff' }) {
+                Log.d(TAG, "UTF-8 decoding successful: $utf8Decoded")
+                return utf8Decoded
+            }
+            Log.d(TAG, "UTF-8 decoding contains replacement char or no Chinese, fallback")
+        } catch (e: Exception) {
+            Log.w(TAG, "UTF-8 decode failed", e)
+        }
+
+        // 2. 回退到多编码比较（UTF-8、GBK、GB18030）
         val encodings = listOf(
             Charsets.UTF_8,
             Charset.forName("GBK"),
@@ -245,7 +258,6 @@ class ExoPlayerManager private constructor(private val context: Context) {
         for (charset in encodings) {
             try {
                 val decoded = String(bytes, charset)
-                // 统计中文字符数量（Unicode 4E00-9FFF 范围）
                 val chineseCount = decoded.count { it in '\u4e00'..'\u9fff' }
                 if (chineseCount > bestChineseCount) {
                     bestChineseCount = chineseCount
@@ -255,13 +267,6 @@ class ExoPlayerManager private constructor(private val context: Context) {
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to decode with ${charset.name()}", e)
             }
-        }
-
-        // 如果所有编码都失败，返回原字符串
-        if (bestChineseCount == 0 && bestResult == badString) {
-            Log.w(TAG, "No valid encoding found, returning original: $badString")
-        } else {
-            Log.d(TAG, "Best result: '$bestResult' (Chinese count: $bestChineseCount)")
         }
 
         return bestResult
