@@ -478,6 +478,17 @@ class MainActivity : AppCompatActivity() {
                 moveSelection(1)    // 向下移动
                 true
             }
+            android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER -> {
+                // 遥控器 OK 键：播放或暂停当前选中的电台
+                selectedStation?.let { station ->
+                    if (playerManager.isPlaying()) {
+                        playerManager.pause()
+                    } else {
+                        playerManager.playStation(station)
+                    }
+                }
+                true
+            }
             else -> super.onKeyDown(keyCode, event)
         }
     }
